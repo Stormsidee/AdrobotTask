@@ -46,7 +46,7 @@ def test_create_and_validate_campaign(api):
     assert campaign(client, country="DEU").status_code == 422
 
 
-def test_editor_guards_and_preserves_weights(api):
+def test_editor_guards_and_distributes_shares(api):
     client, _ = api
     data = campaign(client).json()
     root = f"/api/campaigns/{data['id']}/streams"
@@ -57,8 +57,8 @@ def test_editor_guards_and_preserves_weights(api):
         response = client.post(offers, json={"offer_id": 102})
         assert response.status_code == 200
     assert response.json()[1]["offers"] == [
-        {"offer_id": 101, "share": 100, "state": "active"},
-        {"offer_id": 102, "share": 100, "state": "active"},
+        {"offer_id": 101, "share": 50, "state": "active"},
+        {"offer_id": 102, "share": 50, "state": "active"},
     ]
     response = client.delete(offers + "/102")
     assert response.status_code == 200

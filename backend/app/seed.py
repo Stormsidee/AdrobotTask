@@ -7,8 +7,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from .config import Settings
-from .demo import PREFIX, create_campaign
-from .models import Campaign, DailyStat, StreamOffer
+from .demo import PREFIX, change_offer, create_campaign, OFFER_STREAM
+from .models import Campaign, DailyStat
 from .schemas import CreateCampaign
 
 
@@ -25,7 +25,7 @@ def main():
         campaign = create_campaign(db, CreateCampaign(
             name="demo", country="DE", offer_id=101, domain_id=1, group_id=1, source_id=1,
         ))
-        db.add(StreamOffer(campaign_id=campaign.id, offer_id=102, share=100))
+        change_offer(db, campaign.id, OFFER_STREAM, 102, remove=False)
         for offset in range(7):
             for offer_id, clicks, conversions in [(101, 144, 12), (102, 80, 5)]:
                 db.add(DailyStat(

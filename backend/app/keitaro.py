@@ -7,6 +7,7 @@ import httpx
 from .config import Settings
 from .demo import PREFIX, DomainError, test_campaign_name
 from .schemas import CreateCampaign
+from .shares import normalize_shares, shares_with_new_offer
 
 
 class TrackerError(Exception):
@@ -109,11 +110,20 @@ class KeitaroClient:
             ):
                 raise DomainError(409, "В потоке должен остаться хотя бы один активный оффер")
             links = remaining
+            active = [link for link in links if link["state"] == "active"]
+            shares = normalize_shares([link["share"] for link in active])
         else:
             if any(link["offer_id"] == offer_id for link in links):
                 return
             self.require_catalog("offers", offer_id)
-            links.append({"offer_id": offer_id, "share": 100, "state": "active"})
+            active = [link for link in links if link["state"] == "active"]
+            shares = shares_with_new_offer([link["share"] for link in active])
+            new_link = {"offer_id": offer_id, "share": 0, "state": "active"}
+            links.append(new_link)
+            active.append(new_link)
+
+        for link, share in zip(active, shares, strict=True):
+            link["share"] = share
 
         self._request("PUT", f"streams/{stream_id}", payload={"offers": links})
 

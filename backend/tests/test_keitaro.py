@@ -109,11 +109,11 @@ def test_keitaro_campaign_and_offer_editor(monkeypatch):
             response = client.post(path, json={"offer_id": 102})
             assert response.status_code == 200
         assert response.json()[1]["offers"] == [
-            {"offer_id": 101, "share": 42, "state": "active"},
-            {"offer_id": 102, "share": 100, "state": "active"},
+            {"offer_id": 101, "share": 50, "state": "active"},
+            {"offer_id": 102, "share": 50, "state": "active"},
         ]
         assert client.delete(path + "/102").status_code == 200
-        assert streams[51]["offers"] == [{"offer_id": 101, "share": 42, "state": "active"}]
+        assert streams[51]["offers"] == [{"offer_id": 101, "share": 100, "state": "active"}]
 
 
 def test_keitaro_archives_partial_campaign():

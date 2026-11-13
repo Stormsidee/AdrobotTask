@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .models import Campaign, DailyStat, StreamOffer
 from .schemas import CreateCampaign
+from .shares import normalize_shares, shares_with_new_offer
 
 CATALOGS = {
     "domains": [{"id": 1, "name": "tracker.demo.example"}],
@@ -98,10 +99,19 @@ def change_offer(db: Session, campaign_id: int, stream_id: int, offer_id: int, *
         if len(links) == 1:
             raise DomainError(409, "В потоке должен остаться хотя бы один оффер")
         db.delete(match)
+        links.remove(match)
+        shares = normalize_shares([link.share for link in links])
     else:
         require_catalog("offers", offer_id)
-        if match is None:
-            db.add(StreamOffer(campaign_id=campaign_id, offer_id=offer_id, share=100))
+        if match is not None:
+            return
+        shares = shares_with_new_offer([link.share for link in links])
+        new_link = StreamOffer(campaign_id=campaign_id, offer_id=offer_id)
+        db.add(new_link)
+        links.append(new_link)
+
+    for link, share in zip(links, shares, strict=True):
+        link.share = share
 
 
 def stats(db: Session, campaign_id: int, start: date, end: date) -> list[dict]:
