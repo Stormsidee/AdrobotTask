@@ -40,7 +40,8 @@ def test_report_uses_read_endpoint_and_scopes_filters():
         ]
 
 
-def test_keitaro_campaign_and_offer_editor(monkeypatch):
+@pytest.mark.parametrize("has_catalogs", [True, False])
+def test_keitaro_campaign_and_offer_editor(monkeypatch, has_catalogs):
     campaigns = {21: {"id": 21, "name": "unrelated"}}
     streams = {}
 
@@ -48,13 +49,19 @@ def test_keitaro_campaign_and_offer_editor(monkeypatch):
         path = request.url.path.removeprefix("/admin_api/v1/")
         method = request.method
         if method == "GET" and path in ("domains", "groups", "traffic_sources", "offers"):
+            if not has_catalogs:
+                assert path not in ("domains", "traffic_sources")
             ids = [101, 102] if path == "offers" else [1]
             return httpx.Response(200, json=[{"id": n, "name": path} for n in ids])
         if method == "POST" and path == "campaigns":
             body = json.loads(request.content)
             assert body["state"] == "disabled"
             assert body["name"] == "test_kalinin_smoke"
-            assert (body["domain_id"], body["group_id"], body["traffic_source_id"]) == (1, "1", 1)
+            assert body["group_id"] == "1"
+            if has_catalogs:
+                assert (body["domain_id"], body["traffic_source_id"]) == (1, 1)
+            else:
+                assert "domain_id" not in body and "traffic_source_id" not in body
             campaigns[22] = {"id": 22, **body}
             return httpx.Response(200, json=campaigns[22])
         if method == "POST" and path == "streams":
@@ -95,8 +102,8 @@ def test_keitaro_campaign_and_offer_editor(monkeypatch):
 
     with TestClient(app) as client:
         response = client.post("/api/campaigns", json={
-            "name": "smoke", "country": "DE", "domain_id": 1, "group_id": 1,
-            "source_id": 1, "offer_id": 101,
+            "name": "smoke", "country": "DE", "group_id": 1, "offer_id": 101,
+            **({"domain_id": 1, "source_id": 1} if has_catalogs else {}),
         })
         assert response.status_code == 201
         assert response.json()["stream_id"] == 51

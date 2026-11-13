@@ -40,6 +40,8 @@ def require_catalog(name: str, item_id: int):
 
 
 def create_campaign(db: Session, data: CreateCampaign) -> Campaign:
+    if data.domain_id is None or data.source_id is None:
+        raise DomainError(422, "В деморежиме выберите домен и источник")
     for catalog, item_id in (
         ("offers", data.offer_id), ("domains", data.domain_id),
         ("groups", data.group_id), ("sources", data.source_id),

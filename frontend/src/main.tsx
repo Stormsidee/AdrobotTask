@@ -8,14 +8,14 @@ const number = new Intl.NumberFormat('ru-RU')
 const percent = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 })
 const formatCr = (value: number | null) => value === null ? '—' : percent.format(value) + '%'
 
-function Select({ label, options, value, onChange }: {
-  label: string; options: Option[]; value: string; onChange: (value: string) => void
+function Select({ label, options, value, onChange, required = true }: {
+  label: string; options: Option[]; value: string; onChange: (value: string) => void; required?: boolean
 }) {
   const labelId = useId()
   return (
     <label><span id={labelId}>{label}</span>
-      <select aria-labelledby={labelId} required value={value} onChange={event => onChange(event.target.value)}>
-        <option value="">Выберите</option>
+      <select aria-labelledby={labelId} required={required} disabled={!required && options.length === 0} value={value} onChange={event => onChange(event.target.value)}>
+        <option value="">{required ? 'Выберите' : 'Не задано'}</option>
         {options.map(item => <option key={item.id} value={item.id}>{item.name} · #{item.id}</option>)}
       </select>
     </label>
@@ -25,9 +25,11 @@ function Select({ label, options, value, onChange }: {
 function CampaignForm({ catalogs, config, onCreated }: {
   catalogs: Catalogs; config: Config; onCreated: (campaign: Option, streamId: number) => void
 }) {
+  const demo = config.mode === 'demo'
   const missing = ([
-    ['domains', 'домен'], ['groups', 'группа'], ['sources', 'источник'], ['offers', 'оффер'],
-  ] as const).filter(([key]) => catalogs[key].length === 0).map(([, label]) => label)
+    ['domains', 'домен', demo], ['groups', 'группа', true],
+    ['sources', 'источник', demo], ['offers', 'оффер', true],
+  ] as const).filter(([key, , required]) => required && catalogs[key].length === 0).map(([, label]) => label)
   const [name, setName] = useState('')
   const [country, setCountry] = useState('')
   const [offer, setOffer] = useState('')
@@ -45,8 +47,9 @@ function CampaignForm({ catalogs, config, onCreated }: {
       const result = await api<Option & { stream_id: number }>('/campaigns', {
         method: 'POST',
         body: JSON.stringify({
-          name, country, offer_id: Number(offer), domain_id: Number(domain),
-          group_id: Number(group), source_id: Number(source),
+          name, country, offer_id: Number(offer), group_id: Number(group),
+          domain_id: domain ? Number(domain) : undefined,
+          source_id: source ? Number(source) : undefined,
         }),
       })
       onCreated(result, result.stream_id)
@@ -71,11 +74,14 @@ function CampaignForm({ catalogs, config, onCreated }: {
             <input required pattern="[A-Za-z]{2}" maxLength={2} placeholder="DE" value={country}
               onChange={event => setCountry(event.target.value.toUpperCase())} />
           </label>
-          <Select label="Домен" options={catalogs.domains} value={domain} onChange={setDomain} />
+          <Select label="Домен" options={catalogs.domains} value={domain} onChange={setDomain} required={demo} />
           <Select label="Группа" options={catalogs.groups} value={group} onChange={setGroup} />
-          <Select label="Источник" options={catalogs.sources} value={source} onChange={setSource} />
+          <Select label="Источник" options={catalogs.sources} value={source} onChange={setSource} required={demo} />
           <Select label="Оффер" options={catalogs.offers} value={offer} onChange={setOffer} />
         </div>
+        {!demo && (!domain || !source) && <p className="notice" role="status">
+          Кампания будет создана выключенной. Домен и источник можно назначить позже в Keitaro.
+        </p>}
         {missing.length > 0 && <p className="notice" role="status">
           В Keitaro нужно настроить следующие справочники: {missing.join(', ')}.
         </p>}

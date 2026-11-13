@@ -46,15 +46,20 @@ class KeitaroClient:
             ("domains", data.domain_id), ("groups", data.group_id),
             ("sources", data.source_id), ("offers", data.offer_id),
         ):
-            self.require_catalog(catalog, item_id)
+            if item_id is not None:
+                self.require_catalog(catalog, item_id)
 
         name = test_campaign_name(data.name)
         alias = PREFIX + sha256(name.encode()).hexdigest()[:20]
-        campaign = self._request("POST", "campaigns", payload={
+        payload = {
             "alias": alias, "name": name, "state": "disabled", "type": "position",
-            "domain_id": data.domain_id, "group_id": str(data.group_id),
-            "traffic_source_id": data.source_id,
-        })
+            "group_id": str(data.group_id),
+        }
+        if data.domain_id is not None:
+            payload["domain_id"] = data.domain_id
+        if data.source_id is not None:
+            payload["traffic_source_id"] = data.source_id
+        campaign = self._request("POST", "campaigns", payload=payload)
         campaign_id = self._id(campaign)
         try:
             self._request("POST", "streams", payload={

@@ -16,9 +16,9 @@ class CreateCampaign(BaseModel):
     name: CampaignName
     country: Annotated[str, StringConstraints(pattern=r"^[A-Z]{2}$"), BeforeValidator(normalize_country)]
     offer_id: PositiveId
-    domain_id: PositiveId
+    domain_id: PositiveId | None = None
     group_id: PositiveId
-    source_id: PositiveId
+    source_id: PositiveId | None = None
 
 
 class AddOffer(BaseModel):
